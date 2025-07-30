@@ -222,27 +222,34 @@ local function update_branch_info(file)
     if not file or not file.name then return end
     -- local fname = file.name
     local fname = file.name:gsub("'", "'\\''")
-    local script = [[
+    local script =  [=[
         pushd . > /dev/null
-        dir=$(dirname "$PWD/']] .. fname .. [=[")
+        dir=$(dirname "$PWD/]=] .. fname .. [=[")
         while [[ "$dir" != "/" && ! -d "$dir/.git" ]]; do
             dir=$(dirname "$dir")
         done
-        cd "$dir"
+        cd "$dir" || exit 1
         [[ -d ".git" ]] || exit 1
+
         git_eng="env LANG=C git"
         arrow_up='__ARROW_UP'
         arrow_down='__ARROW_DOWN'
         branch=$($git_eng symbolic-ref --short HEAD 2>/dev/null)
+        
         mod=$($git_eng status --porcelain)
-        modified=
-        [[ -n "$mod" ]] && modified=" ]] .. modified_icon .. [["
-        out="$branch$modified"
+        if [[ -n "$mod" ]]; then
+            out="$branch ]=] .. modified_icon .. [=["
+        else
+            out="$branch"
+        fi
+
         stat="$($git_eng status --porcelain --branch | grep '^##' | grep -o '\[.\+\]$')"
         aheadN="$(echo $stat | grep -o 'ahead [[:digit:]]\+' | grep -o '[[:digit:]]\+')"
         behindN="$(echo $stat | grep -o 'behind [[:digit:]]\+' | grep -o '[[:digit:]]\+')"
+
         [[ -n "$behindN" ]] && out+=" $behindN$arrow_down"
         [[ -n "$aheadN" ]] && out+=" $aheadN$arrow_up"
+
         popd > /dev/null
         [[ -n "$branch" ]] && echo "__GIT_BRANCH $out"
     ]=]
